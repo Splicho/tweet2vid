@@ -34,7 +34,8 @@ interface Layout {
 export function computeLayout(
   text: string,
   ctx: CanvasRenderingContext2D,
-  size: number = CANVAS_SIZE
+  size: number = CANVAS_SIZE,
+  fontStack: string = FONT_STACK
 ): Layout {
   const maxWidth = size - PAD * 2
   const maxTextHeight = size * MAX_TEXT_RATIO
@@ -44,7 +45,7 @@ export function computeLayout(
   let lineHeight = 0
 
   while (fontSize >= MIN_FONT) {
-    ctx.font = `600 ${fontSize}px ${FONT_STACK}`
+    ctx.font = `600 ${fontSize}px ${fontStack}`
     lineHeight = Math.round(fontSize * LINE_HEIGHT)
     lines = wrapText(text, ctx, maxWidth)
     if (lines.length * lineHeight <= maxTextHeight) break
@@ -83,14 +84,24 @@ function wrapText(
       lines.push("")
       continue
     }
-    let line = words[0]
-    for (let i = 1; i < words.length; i++) {
-      const candidate = `${line} ${words[i]}`
+
+    const pieces: Array<{ text: string; newWord: boolean }> = []
+    for (const word of words) {
+      const chunks = breakWord(word, ctx, maxWidth)
+      chunks.forEach((chunk, index) => {
+        pieces.push({ text: chunk, newWord: index === 0 })
+      })
+    }
+
+    let line = pieces[0].text
+    for (let i = 1; i < pieces.length; i++) {
+      const candidate =
+        line + (pieces[i].newWord ? " " : "") + pieces[i].text
       if (ctx.measureText(candidate).width <= maxWidth) {
         line = candidate
       } else {
         lines.push(line)
-        line = words[i]
+        line = pieces[i].text
       }
     }
     lines.push(line)
@@ -98,12 +109,35 @@ function wrapText(
   return lines
 }
 
+function breakWord(
+  word: string,
+  ctx: CanvasRenderingContext2D,
+  maxWidth: number
+): string[] {
+  if (ctx.measureText(word).width <= maxWidth) return [word]
+
+  const chunks: string[] = []
+  let current = ""
+  for (const char of word) {
+    const candidate = current + char
+    if (current && ctx.measureText(candidate).width > maxWidth) {
+      chunks.push(current)
+      current = char
+    } else {
+      current = candidate
+    }
+  }
+  if (current) chunks.push(current)
+  return chunks
+}
+
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
   video: HTMLVideoElement | null,
   text: string,
   settings: RenderSettings,
-  size: number = CANVAS_SIZE
+  size: number = CANVAS_SIZE,
+  fontStack: string = FONT_STACK
 ) {
   const background = getBackground(settings.backgroundId)
 
@@ -118,13 +152,17 @@ export function drawFrame(
     ctx.fillRect(0, 0, size, size)
   }
 
-  const layout = computeLayout(text, ctx, size)
+  const layout = computeLayout(text, ctx, size, fontStack)
 
   ctx.fillStyle = resolveTextColor(settings)
   ctx.textBaseline = "top"
-  ctx.font = `600 ${layout.fontSize}px ${FONT_STACK}`
+  ctx.font = `600 ${layout.fontSize}px ${fontStack}`
+  const sample = ctx.measureText("dp")
+  const contentArea =
+    sample.actualBoundingBoxAscent + sample.actualBoundingBoxDescent
+  const halfLeading = Math.max(0, (layout.lineHeight - contentArea) / 2)
   layout.lines.forEach((line, i) => {
-    ctx.fillText(line, PAD, PAD + i * layout.lineHeight)
+    ctx.fillText(line, PAD, PAD + i * layout.lineHeight + halfLeading)
   })
 
   const { x, y, w, h } = layout.videoRect

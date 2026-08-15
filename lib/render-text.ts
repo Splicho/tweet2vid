@@ -57,6 +57,7 @@ function textBlock(
         fontWeight: 600,
         lineHeight: LINE_HEIGHT,
         color,
+        wordBreak: "break-word",
       },
       children: text.split("\n").map((line) => ({
         type: "div",
@@ -156,6 +157,7 @@ export async function renderTextPng(
             fontWeight: 600,
             lineHeight: LINE_HEIGHT,
             color,
+            wordBreak: "break-word",
           },
           children: options.text.split("\n").map((line) => ({
             type: "div",
