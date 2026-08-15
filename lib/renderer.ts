@@ -3,12 +3,6 @@ import {
   resolveTextColorForBackground,
 } from "./backgrounds"
 import type { TextSettings } from "./editor"
-import {
-  ensureTwemojiLoaded,
-  getLoadedTwemoji,
-  measureText,
-  splitGraphemes,
-} from "./emoji"
 
 export const CANVAS_SIZE = 1080
 
@@ -70,7 +64,7 @@ export function computeLayout(
   while (fontSize >= MIN_FONT) {
     ctx.font = buildFont(fontSize, settings, fontStack)
     lineHeight = Math.round(fontSize * LINE_HEIGHT)
-    lines = wrapText(text, ctx, maxWidth, fontSize)
+    lines = wrapText(text, ctx, maxWidth)
     if (lines.length * lineHeight <= maxTextHeight) break
     fontSize -= 2
   }
@@ -98,8 +92,7 @@ export function computeLayout(
 function wrapText(
   text: string,
   ctx: CanvasRenderingContext2D,
-  maxWidth: number,
-  fontSize: number
+  maxWidth: number
 ): string[] {
   const lines: string[] = []
   for (const paragraph of text.split("\n")) {
@@ -111,7 +104,7 @@ function wrapText(
 
     const pieces: Array<{ text: string; newWord: boolean }> = []
     for (const word of words) {
-      const chunks = breakWord(word, ctx, maxWidth, fontSize)
+      const chunks = breakWord(word, ctx, maxWidth)
       chunks.forEach((chunk, index) => {
         pieces.push({ text: chunk, newWord: index === 0 })
       })
@@ -121,7 +114,7 @@ function wrapText(
     for (let i = 1; i < pieces.length; i++) {
       const candidate =
         line + (pieces[i].newWord ? " " : "") + pieces[i].text
-      if (measureText(ctx, candidate, fontSize) <= maxWidth) {
+      if (ctx.measureText(candidate).width <= maxWidth) {
         line = candidate
       } else {
         lines.push(line)
@@ -136,18 +129,17 @@ function wrapText(
 function breakWord(
   word: string,
   ctx: CanvasRenderingContext2D,
-  maxWidth: number,
-  fontSize: number
+  maxWidth: number
 ): string[] {
-  if (measureText(ctx, word, fontSize) <= maxWidth) return [word]
+  if (ctx.measureText(word).width <= maxWidth) return [word]
 
   const chunks: string[] = []
   let current = ""
-  for (const segment of splitGraphemes(word)) {
-    const candidate = current + segment.text
-    if (current && measureText(ctx, candidate, fontSize) > maxWidth) {
+  for (const char of word) {
+    const candidate = current + char
+    if (current && ctx.measureText(candidate).width > maxWidth) {
       chunks.push(current)
-      current = segment.text
+      current = char
     } else {
       current = candidate
     }
@@ -186,29 +178,8 @@ export function drawFrame(
   const contentArea =
     sample.actualBoundingBoxAscent + sample.actualBoundingBoxDescent
   const halfLeading = Math.max(0, (layout.lineHeight - contentArea) / 2)
-  const fontSize = layout.fontSize
   layout.lines.forEach((line, i) => {
-    const lineY = PAD + i * layout.lineHeight + halfLeading
-    let x = PAD
-    for (const segment of splitGraphemes(line)) {
-      if (!segment.isEmoji) {
-        ctx.fillText(segment.text, x, lineY)
-        x += ctx.measureText(segment.text).width
-        continue
-      }
-      ensureTwemojiLoaded(segment.text)
-      const emoji = getLoadedTwemoji(segment.text)
-      if (emoji) {
-        const emojiSize = Math.round(fontSize * 1.1)
-        const emojiX = x + (fontSize - emojiSize) / 2
-        const emojiY = lineY + (fontSize - emojiSize) / 2
-        ctx.drawImage(emoji, emojiX, emojiY, emojiSize, emojiSize)
-        x += fontSize
-      } else {
-        ctx.fillText(segment.text, x, lineY)
-        x += fontSize
-      }
-    }
+    ctx.fillText(line, PAD, PAD + i * layout.lineHeight + halfLeading)
   })
 
   const { x, y, w, h } = layout.videoRect

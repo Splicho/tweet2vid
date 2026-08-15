@@ -220,7 +220,7 @@ function emojiToTwemojiPath(segment: string): string {
 
 const twemojiCache = new Map<string, string>()
 
-async function loadEmojiSvg(segment: string): Promise<string> {
+async function loadEmojiPng(segment: string): Promise<string> {
   const hex = emojiToTwemojiPath(segment)
   const cached = twemojiCache.get(hex)
   if (cached) return cached
@@ -230,7 +230,9 @@ async function loadEmojiSvg(segment: string): Promise<string> {
   if (!response.ok) return ""
 
   const svg = await response.text()
-  const dataUri = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`
+  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: 36 } })
+  const png = resvg.render().asPng()
+  const dataUri = `data:image/png;base64,${Buffer.from(png).toString("base64")}`
   twemojiCache.set(hex, dataUri)
   return dataUri
 }
@@ -246,7 +248,7 @@ async function renderSvg(
     embedFont: true,
     loadAdditionalAsset: async (languageCode: string, segment: string) => {
       if (languageCode === "emoji") {
-        return loadEmojiSvg(segment)
+        return loadEmojiPng(segment)
       }
       return ""
     },

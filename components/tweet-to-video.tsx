@@ -57,6 +57,11 @@ export function TweetToVideo({
 
   const editing = hovering || focused
 
+  const textColor = resolveTextColorForBackground(
+    backgroundSettings.colors,
+    settings.textColor
+  )
+
   const measureCtx = React.useMemo(() => {
     if (typeof document === "undefined") return null
     const canvas = document.createElement("canvas")
@@ -108,11 +113,6 @@ export function TweetToVideo({
       video.volume = volume / 100
     }
   }, [volume])
-
-  const textColor = resolveTextColorForBackground(
-    backgroundSettings.colors,
-    settings.textColor
-  )
 
   const handleExport = React.useCallback(
     async (format: ExportFormat) => {
