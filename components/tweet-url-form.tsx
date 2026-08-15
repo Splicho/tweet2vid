@@ -59,7 +59,7 @@ export function TweetUrlForm() {
           disabled={loading || !url.trim()}
           className="h-14 px-8 text-base"
         >
-          {loading ? <Spinner data-icon="inline-start" /> : <LinkIcon data-icon="inline-start" />}
+          {loading ? <Spinner data-icon="inline-start" /> : <LinkIcon data-icon="inline-start" className="size-5" />}
           {loading ? "Loading…" : "Load tweet"}
         </Button>
       </div>
