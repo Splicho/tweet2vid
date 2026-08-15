@@ -2,7 +2,7 @@ import Link from "next/link"
 
 export function SiteHeader() {
   return (
-    <header className="border-b">
+    <header>
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
