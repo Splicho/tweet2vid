@@ -208,6 +208,33 @@ function backgroundStyle(
   }
 }
 
+function emojiToTwemojiPath(segment: string): string {
+  const parts: string[] = []
+  for (const char of segment) {
+    const code = char.codePointAt(0)
+    if (code === undefined || code === 0xfe0f) continue
+    parts.push(code.toString(16))
+  }
+  return parts.join("-")
+}
+
+const twemojiCache = new Map<string, string>()
+
+async function loadEmojiSvg(segment: string): Promise<string> {
+  const hex = emojiToTwemojiPath(segment)
+  const cached = twemojiCache.get(hex)
+  if (cached) return cached
+
+  const url = `https://cdn.jsdelivr.net/gh/jdecked/twemoji@14.0.2/assets/svg/${hex}.svg`
+  const response = await fetch(url)
+  if (!response.ok) return ""
+
+  const svg = await response.text()
+  const dataUri = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`
+  twemojiCache.set(hex, dataUri)
+  return dataUri
+}
+
 async function renderSvg(
   node: VNode,
   width: number,
@@ -217,13 +244,11 @@ async function renderSvg(
     width,
     fonts,
     embedFont: true,
-    loadAdditionalAsset: (languageCode: string, segment: string) => {
+    loadAdditionalAsset: async (languageCode: string, segment: string) => {
       if (languageCode === "emoji") {
-        return Promise.resolve(
-          `https://cdn.jsdelivr.net/twitter/twemoji@14.0.2/assets/svg/${segment}.svg`
-        )
+        return loadEmojiSvg(segment)
       }
-      return Promise.resolve("")
+      return ""
     },
   })
 
