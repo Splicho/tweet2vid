@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Geist_Mono, Inter } from "next/font/google"
+import Script from "next/script"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -104,6 +105,11 @@ export default function RootLayout({
       <body>
         <ThemeProvider>{children}</ThemeProvider>
         <Toaster />
+        <Script
+          src="http://tweet2vid-umami-daa7ef-91-99-183-42.sslip.io/script.js"
+          data-website-id="2133ddab-61cc-4e83-91ff-1c9ad5c65314"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   )
