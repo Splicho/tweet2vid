@@ -277,9 +277,6 @@ export function TweetToVideo({
             fontWeight: textSettings.fontWeight,
             fontFamily: `${textSettings.fontFamily}, ${fontStack}`,
             opacity: editing ? 1 : 0,
-            boxShadow: editing
-              ? "inset 0 0 0 1px rgba(255, 255, 255, 0.3)"
-              : undefined,
           }}
         />
       )}

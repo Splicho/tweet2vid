@@ -108,7 +108,7 @@ export default function RootLayout({
         <Script
           src="http://tweet2vid-umami-daa7ef-91-99-183-42.sslip.io/script.js"
           data-website-id="2133ddab-61cc-4e83-91ff-1c9ad5c65314"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
       </body>
     </html>
