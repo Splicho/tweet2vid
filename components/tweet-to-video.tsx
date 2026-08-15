@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { PauseIcon, PlayIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { useEditorSettings } from "@/components/editor-settings"
 import { resolveTextColor } from "@/lib/backgrounds"
 import { CANVAS_SIZE, computeLayout, drawFrame } from "@/lib/renderer"
 import type { TweetMedia } from "@/lib/tweet"
@@ -26,12 +27,19 @@ export function TweetToVideo({
     () => `/api/video?url=${encodeURIComponent(initialTweet.videoUrl)}`
   )
 
+  const { textSettings } = useEditorSettings()
+
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const videoRef = React.useRef<HTMLVideoElement>(null)
 
   const settings = React.useMemo(
-    () => ({ backgroundId: "black", roundness: 28, textColor: "auto" as const }),
-    []
+    () => ({
+      backgroundId: "black",
+      roundness: 28,
+      textColor: "auto" as const,
+      ...textSettings,
+    }),
+    [textSettings]
   )
 
   const editing = hovering || focused
@@ -49,8 +57,10 @@ export function TweetToVideo({
 
   const layout = React.useMemo(
     () =>
-      measureCtx ? computeLayout(text, measureCtx, CANVAS_SIZE, fontStack) : null,
-    [measureCtx, text, fontStack]
+      measureCtx
+        ? computeLayout(text, measureCtx, CANVAS_SIZE, fontStack, settings)
+        : null,
+    [measureCtx, text, fontStack, settings]
   )
 
   React.useEffect(() => {
@@ -108,8 +118,8 @@ export function TweetToVideo({
             lineHeight: `${layout.lineHeight / 10.8}cqw`,
             color: "transparent",
             caretColor: textColor,
-            fontWeight: 600,
-            fontFamily: "inherit",
+            fontWeight: textSettings.fontWeight,
+            fontFamily: `${textSettings.fontFamily}, ${fontStack}`,
             opacity: editing ? 1 : 0,
             boxShadow: editing
               ? "inset 0 0 0 1px rgba(255, 255, 255, 0.3)"

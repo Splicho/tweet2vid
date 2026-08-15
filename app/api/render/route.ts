@@ -10,6 +10,13 @@ import ffmpegPath from "ffmpeg-static"
 import type { NextRequest } from "next/server"
 
 import { BACKGROUNDS } from "@/lib/backgrounds"
+import {
+  DEFAULT_TEXT_SETTINGS,
+  FONT_FAMILIES,
+  FONT_WEIGHTS,
+  MAX_FONT_SIZE,
+  MIN_FONT_SIZE,
+} from "@/lib/editor"
 import { renderTextPng } from "@/lib/render-text"
 
 const execFileAsync = promisify(execFile)
@@ -23,6 +30,9 @@ interface RenderBody {
   backgroundId?: string
   roundness?: number
   textColor?: "auto" | "white" | "black"
+  fontFamily?: string
+  fontWeight?: number
+  fontSize?: number
   format?: "mp4" | "webm"
 }
 
@@ -63,6 +73,16 @@ export async function POST(request: NextRequest) {
     body.textColor === "white" || body.textColor === "black"
       ? body.textColor
       : "auto"
+  const fontFamily = FONT_FAMILIES.some((f) => f.id === body.fontFamily)
+    ? body.fontFamily!
+    : DEFAULT_TEXT_SETTINGS.fontFamily
+  const fontWeight = FONT_WEIGHTS.some((w) => w.id === body.fontWeight)
+    ? body.fontWeight!
+    : DEFAULT_TEXT_SETTINGS.fontWeight
+  const fontSize = Math.min(
+    MAX_FONT_SIZE,
+    Math.max(MIN_FONT_SIZE, Number(body.fontSize) || DEFAULT_TEXT_SETTINGS.fontSize)
+  )
 
   if (!ffmpegPath) {
     return Response.json(
@@ -99,6 +119,9 @@ export async function POST(request: NextRequest) {
       text,
       backgroundId,
       textColor,
+      fontFamily,
+      fontWeight,
+      fontSize,
     })
     await fs.writeFile(backgroundPath, png)
 

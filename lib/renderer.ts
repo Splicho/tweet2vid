@@ -1,8 +1,9 @@
 import { getBackground, resolveTextColor as resolveTextColorFor } from "./backgrounds"
+import type { TextSettings } from "./editor"
 
 export const CANVAS_SIZE = 1080
 
-export interface RenderSettings {
+export interface RenderSettings extends TextSettings {
   backgroundId: string
   roundness: number
   textColor: "auto" | "white" | "black"
@@ -12,7 +13,6 @@ const PAD = 64
 const GAP = 44
 const MAX_TEXT_RATIO = 0.34
 const MIN_FONT = 24
-const MAX_FONT = 46
 const LINE_HEIGHT = 1.32
 const FONT_STACK =
   'Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
@@ -21,6 +21,17 @@ export function resolveTextColor(
   settings: RenderSettings
 ): string {
   return resolveTextColorFor(settings.backgroundId, settings.textColor)
+}
+
+function buildFont(
+  fontSize: number,
+  settings: RenderSettings,
+  fallbackStack: string
+): string {
+  const family = settings.fontFamily.includes(" ")
+    ? `"${settings.fontFamily}"`
+    : settings.fontFamily
+  return `${settings.fontWeight} ${fontSize}px ${family}, ${fallbackStack}`
 }
 
 interface Layout {
@@ -35,17 +46,18 @@ export function computeLayout(
   text: string,
   ctx: CanvasRenderingContext2D,
   size: number = CANVAS_SIZE,
-  fontStack: string = FONT_STACK
+  fontStack: string = FONT_STACK,
+  settings: RenderSettings
 ): Layout {
   const maxWidth = size - PAD * 2
   const maxTextHeight = size * MAX_TEXT_RATIO
 
-  let fontSize = MAX_FONT
+  let fontSize = settings.fontSize
   let lines: string[] = []
   let lineHeight = 0
 
   while (fontSize >= MIN_FONT) {
-    ctx.font = `600 ${fontSize}px ${fontStack}`
+    ctx.font = buildFont(fontSize, settings, fontStack)
     lineHeight = Math.round(fontSize * LINE_HEIGHT)
     lines = wrapText(text, ctx, maxWidth)
     if (lines.length * lineHeight <= maxTextHeight) break
@@ -152,11 +164,11 @@ export function drawFrame(
     ctx.fillRect(0, 0, size, size)
   }
 
-  const layout = computeLayout(text, ctx, size, fontStack)
+  const layout = computeLayout(text, ctx, size, fontStack, settings)
 
   ctx.fillStyle = resolveTextColor(settings)
   ctx.textBaseline = "top"
-  ctx.font = `600 ${layout.fontSize}px ${fontStack}`
+  ctx.font = buildFont(layout.fontSize, settings, fontStack)
   const sample = ctx.measureText("dp")
   const contentArea =
     sample.actualBoundingBoxAscent + sample.actualBoundingBoxDescent

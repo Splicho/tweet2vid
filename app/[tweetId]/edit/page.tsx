@@ -7,6 +7,7 @@ import { ArrowLeftIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { EditToolbar } from "@/components/edit-toolbar"
+import { EditorSettingsProvider } from "@/components/editor-settings"
 import { TweetToVideo } from "@/components/tweet-to-video"
 import { getCachedTweet } from "@/components/tweet-url-form"
 
@@ -47,12 +48,14 @@ export default function EditPage() {
           </Button>
         </main>
       ) : (
-        <main className="dark relative z-10 flex min-h-screen items-center justify-center p-6">
-          <div className="w-full max-w-[min(84vh,900px)]">
-            <TweetToVideo initialTweet={cached.tweet} />
-          </div>
-          <EditToolbar />
-        </main>
+        <EditorSettingsProvider>
+          <main className="dark relative z-10 flex min-h-screen items-center justify-center p-6">
+            <div className="w-full max-w-[min(84vh,900px)]">
+              <TweetToVideo initialTweet={cached.tweet} />
+            </div>
+            <EditToolbar />
+          </main>
+        </EditorSettingsProvider>
       )}
     </div>
   )
