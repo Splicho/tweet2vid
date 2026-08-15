@@ -2,6 +2,8 @@
 
 import * as React from "react"
 
+import { AnimatePresence, motion } from "framer-motion"
+import { PauseIcon, PlayIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { resolveTextColor } from "@/lib/backgrounds"
@@ -18,6 +20,8 @@ export function TweetToVideo({
   const [text, setText] = React.useState(initialTweet.text)
   const [hovering, setHovering] = React.useState(false)
   const [focused, setFocused] = React.useState(false)
+  const [hoveringVideo, setHoveringVideo] = React.useState(false)
+  const [playing, setPlaying] = React.useState(false)
   const [videoSrc] = React.useState(
     () => `/api/video?url=${encodeURIComponent(initialTweet.videoUrl)}`
   )
@@ -64,6 +68,16 @@ export function TweetToVideo({
     return () => cancelAnimationFrame(raf)
   }, [text, settings, fontStack])
 
+  const togglePlayback = () => {
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) {
+      void video.play().catch(() => {})
+    } else {
+      video.pause()
+    }
+  }
+
   const textColor = resolveTextColor(settings.backgroundId, settings.textColor)
 
   return (
@@ -103,6 +117,44 @@ export function TweetToVideo({
           }}
         />
       )}
+      {layout && (
+        <div
+          className="absolute z-10 flex cursor-pointer items-center justify-center"
+          style={{
+            left: `${(layout.videoRect.x / CANVAS_SIZE) * 100}%`,
+            top: `${(layout.videoRect.y / CANVAS_SIZE) * 100}%`,
+            width: `${(layout.videoRect.w / CANVAS_SIZE) * 100}%`,
+            height: `${(layout.videoRect.h / CANVAS_SIZE) * 100}%`,
+          }}
+          onMouseEnter={() => setHoveringVideo(true)}
+          onMouseLeave={() => setHoveringVideo(false)}
+          onClick={togglePlayback}
+        >
+          <AnimatePresence>
+            {hoveringVideo && (
+              <motion.button
+                type="button"
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="flex size-20 items-center justify-center rounded-full shadow-2xl"
+                style={{
+                  background:
+                    "linear-gradient(180deg, var(--primary) 0%, color-mix(in oklch, var(--primary) 55%, black) 100%)",
+                }}
+                aria-label={playing ? "Pause video" : "Play video"}
+              >
+                {playing ? (
+                  <PauseIcon className="size-8 text-white" />
+                ) : (
+                  <PlayIcon className="size-8 translate-x-0.5 text-white" />
+                )}
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
       <video
         ref={videoRef}
         src={videoSrc}
@@ -113,6 +165,8 @@ export function TweetToVideo({
         onLoadedData={(event) => {
           void event.currentTarget.play().catch(() => {})
         }}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
         className="hidden"
         onError={() => {
           if (videoSrc) {
