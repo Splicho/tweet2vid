@@ -2,6 +2,7 @@ export interface TextSettings {
   fontFamily: string
   fontWeight: number
   fontSize: number
+  textColor: string
 }
 
 export const FONT_FAMILIES = [
@@ -58,10 +59,26 @@ export const DEFAULT_TEXT_SETTINGS: TextSettings = {
   fontFamily: "Inter",
   fontWeight: 600,
   fontSize: 46,
+  textColor: "auto",
 }
 
 export const MIN_FONT_SIZE = 28
 export const MAX_FONT_SIZE = 64
+
+export const DEFAULT_ROUNDNESS = 28
+export const MIN_ROUNDNESS = 0
+export const MAX_ROUNDNESS = 80
+
+export const DEFAULT_VOLUME = 100
+export const MIN_VOLUME = 0
+export const MAX_VOLUME = 100
+
+const TEXT_COLOR_HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/
+
+export function isTextColor(value: unknown): value is string {
+  if (value === "auto" || value === "white" || value === "black") return true
+  return typeof value === "string" && TEXT_COLOR_HEX_RE.test(value)
+}
 
 export function isTextSettings(value: unknown): value is TextSettings {
   if (typeof value !== "object" || value === null) return false
@@ -71,6 +88,7 @@ export function isTextSettings(value: unknown): value is TextSettings {
     FONT_WEIGHTS.some((w) => w.id === v.fontWeight) &&
     typeof v.fontSize === "number" &&
     v.fontSize >= MIN_FONT_SIZE &&
-    v.fontSize <= MAX_FONT_SIZE
+    v.fontSize <= MAX_FONT_SIZE &&
+    isTextColor(v.textColor)
   )
 }

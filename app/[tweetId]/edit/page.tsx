@@ -11,12 +11,22 @@ import { EditorSettingsProvider } from "@/components/editor-settings"
 import { TweetToVideo } from "@/components/tweet-to-video"
 import { getCachedTweet } from "@/components/tweet-url-form"
 
+function useIsMounted() {
+  return React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
+}
+
 export default function EditPage() {
   const params = useParams<{ tweetId: string }>()
-  const cached = React.useMemo(
-    () => (params?.tweetId ? getCachedTweet(params.tweetId) : null),
-    [params]
-  )
+  const mounted = useIsMounted()
+
+  const cached = React.useMemo(() => {
+    if (!mounted || !params?.tweetId) return null
+    return getCachedTweet(params.tweetId)
+  }, [mounted, params])
 
   return (
     <div className="relative min-h-screen w-full bg-black">
@@ -34,7 +44,7 @@ export default function EditPage() {
         }}
       />
 
-      {!cached ? (
+      {!mounted ? null : !cached ? (
         <main className="dark relative z-10 flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
           <p className="text-sm text-white/60">
             We couldn&apos;t find this tweet in your browser. Load it from the

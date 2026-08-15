@@ -6,8 +6,12 @@ import { AnimatePresence, motion } from "framer-motion"
 import { PauseIcon, PlayIcon } from "lucide-react"
 import { toast } from "sonner"
 
-import { useEditorSettings } from "@/components/editor-settings"
-import { resolveTextColor } from "@/lib/backgrounds"
+import {
+  useEditorSettings,
+  type ExportFormat,
+  type ExportState,
+} from "@/components/editor-settings"
+import { resolveTextColorForBackground } from "@/lib/backgrounds"
 import { CANVAS_SIZE, computeLayout, drawFrame } from "@/lib/renderer"
 import type { TweetMedia } from "@/lib/tweet"
 
@@ -27,19 +31,28 @@ export function TweetToVideo({
     () => `/api/video?url=${encodeURIComponent(initialTweet.videoUrl)}`
   )
 
-  const { textSettings } = useEditorSettings()
+  const {
+    textSettings,
+    backgroundSettings,
+    roundness,
+    volume,
+    registerExportHandler,
+    registerCancelExportHandler,
+    setExportState,
+  } = useEditorSettings()
 
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const videoRef = React.useRef<HTMLVideoElement>(null)
+  const [muted, setMuted] = React.useState(false)
+  const activeJobRef = React.useRef<string | null>(null)
 
   const settings = React.useMemo(
     () => ({
-      backgroundId: "black",
-      roundness: 28,
-      textColor: "auto" as const,
+      background: backgroundSettings,
+      roundness,
       ...textSettings,
     }),
-    [textSettings]
+    [textSettings, backgroundSettings, roundness]
   )
 
   const editing = hovering || focused
@@ -82,13 +95,156 @@ export function TweetToVideo({
     const video = videoRef.current
     if (!video) return
     if (video.paused) {
+      setMuted(false)
       void video.play().catch(() => {})
     } else {
       video.pause()
     }
   }
 
-  const textColor = resolveTextColor(settings.backgroundId, settings.textColor)
+  React.useEffect(() => {
+    const video = videoRef.current
+    if (video) {
+      video.volume = volume / 100
+    }
+  }, [volume])
+
+  const textColor = resolveTextColorForBackground(
+    backgroundSettings.colors,
+    settings.textColor
+  )
+
+  const handleExport = React.useCallback(
+    async (format: ExportFormat) => {
+      const setState = (state: ExportState) => setExportState(state)
+      try {
+        setState({ status: "rendering", progress: 0 })
+        const response = await fetch("/api/render", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            tweetId: initialTweet.id,
+            text,
+            videoUrl: initialTweet.videoUrl,
+            background: backgroundSettings,
+            roundness,
+            textColor: textSettings.textColor,
+            volume,
+            durationMs: initialTweet.durationMs,
+            fontFamily: textSettings.fontFamily,
+            fontWeight: textSettings.fontWeight,
+            fontSize: textSettings.fontSize,
+            format,
+          }),
+        })
+
+        let jobId: string
+        try {
+          const data = (await response.json()) as {
+            jobId?: string
+            error?: string
+          }
+          if (!response.ok || !data.jobId) {
+            throw new Error(data.error ?? "Export failed.")
+          }
+          jobId = data.jobId
+        } catch {
+          throw new Error("Export failed.")
+        }
+        activeJobRef.current = jobId
+
+        let lastProgress = 0
+        while (true) {
+          if (activeJobRef.current !== jobId) {
+            return
+          }
+          const progressResponse = await fetch(
+            `/api/render?action=progress&jobId=${encodeURIComponent(jobId)}`
+          )
+          const progressData = (await progressResponse.json()) as {
+            status?: ExportState["status"]
+            progress?: number
+            error?: string
+          }
+          if (!progressResponse.ok) {
+            throw new Error(progressData.error ?? "Export failed.")
+          }
+
+          const progress = Math.round(progressData.progress ?? 0)
+          if (progress !== lastProgress) {
+            lastProgress = progress
+            setState({ status: "rendering", progress })
+          }
+
+          if (progressData.status === "error") {
+            throw new Error(progressData.error ?? "Export failed.")
+          }
+          if (progressData.status === "done") {
+            break
+          }
+          await new Promise((resolve) => setTimeout(resolve, 500))
+        }
+        activeJobRef.current = null
+
+        const downloadResponse = await fetch(
+          `/api/render?action=download&jobId=${encodeURIComponent(jobId)}`
+        )
+        if (!downloadResponse.ok) {
+          throw new Error("Could not download the rendered video.")
+        }
+        const blob = await downloadResponse.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `tweet2vid.com.${initialTweet.id}.${format}`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+        setState({ status: "done", progress: 100 })
+        toast.success("Export complete.")
+      } catch (error) {
+        setState({ status: "error", progress: 0 })
+        toast.error(
+          error instanceof Error ? error.message : "Export failed."
+        )
+      } finally {
+        if (activeJobRef.current) {
+          activeJobRef.current = null
+        }
+      }
+    },
+    [
+      initialTweet.id,
+      initialTweet.videoUrl,
+      initialTweet.durationMs,
+      text,
+      backgroundSettings,
+      roundness,
+      textSettings,
+      volume,
+      setExportState,
+    ]
+  )
+
+  const handleCancelExport = React.useCallback(() => {
+    const jobId = activeJobRef.current
+    if (!jobId) return
+    activeJobRef.current = null
+    void fetch(`/api/render?action=cancel&jobId=${encodeURIComponent(jobId)}`)
+      .catch(() => {})
+    setExportState({ status: "idle", progress: 0 })
+    toast.info("Rendering cancelled.")
+  }, [setExportState])
+
+  React.useEffect(() => {
+    registerExportHandler(handleExport)
+    registerCancelExportHandler(handleCancelExport)
+    return () => {
+      registerExportHandler(null)
+      registerCancelExportHandler(null)
+    }
+  }, [handleExport, handleCancelExport, registerExportHandler, registerCancelExportHandler])
 
   return (
     <div className="relative w-full" style={{ containerType: "inline-size" }}>
@@ -169,11 +325,18 @@ export function TweetToVideo({
         ref={videoRef}
         src={videoSrc}
         playsInline
-        muted
+        muted={muted}
         loop
         autoPlay
         onLoadedData={(event) => {
-          void event.currentTarget.play().catch(() => {})
+          const video = event.currentTarget
+          video.volume = volume / 100
+          void video.play().catch(() => {
+            if (muted) return
+            setMuted(true)
+            video.muted = true
+            void video.play().catch(() => {})
+          })
         }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}

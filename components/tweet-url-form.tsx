@@ -29,17 +29,17 @@ export function TweetUrlForm() {
   }
 
   return (
-    <div className="flex w-full max-w-xl flex-col gap-6">
-      <div className="flex flex-col gap-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">
+    <div className="flex w-full max-w-3xl flex-col gap-8">
+      <div className="flex flex-col gap-3 text-center">
+        <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
           Turn a tweet into a video
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Paste a link to a video tweet. We&apos;ll put the text on a 1080×1080
-          canvas and you can style it any way you like.
+        <p className="mx-auto max-w-xl text-lg text-muted-foreground">
+          No sign-up, no watermarks. Paste a tweet, customize the look, and
+          download your video in seconds.
         </p>
       </div>
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-3">
         <div className="flex-1">
           <Input
             value={url}
@@ -51,11 +51,13 @@ export function TweetUrlForm() {
             aria-label="Tweet URL"
             disabled={loading}
             autoFocus
+            className="h-14 px-5 text-base"
           />
         </div>
         <Button
           onClick={() => void handleSubmit()}
           disabled={loading || !url.trim()}
+          className="h-14 px-8 text-base"
         >
           {loading ? <Spinner data-icon="inline-start" /> : <LinkIcon data-icon="inline-start" />}
           {loading ? "Loading…" : "Load tweet"}

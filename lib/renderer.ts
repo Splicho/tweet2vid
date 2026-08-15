@@ -1,12 +1,14 @@
-import { getBackground, resolveTextColor as resolveTextColorFor } from "./backgrounds"
+import {
+  type BackgroundSettings,
+  resolveTextColorForBackground,
+} from "./backgrounds"
 import type { TextSettings } from "./editor"
 
 export const CANVAS_SIZE = 1080
 
 export interface RenderSettings extends TextSettings {
-  backgroundId: string
+  background: BackgroundSettings
   roundness: number
-  textColor: "auto" | "white" | "black"
 }
 
 const PAD = 64
@@ -20,7 +22,10 @@ const FONT_STACK =
 export function resolveTextColor(
   settings: RenderSettings
 ): string {
-  return resolveTextColorFor(settings.backgroundId, settings.textColor)
+  return resolveTextColorForBackground(
+    settings.background.colors,
+    settings.textColor
+  )
 }
 
 function buildFont(
@@ -151,15 +156,15 @@ export function drawFrame(
   size: number = CANVAS_SIZE,
   fontStack: string = FONT_STACK
 ) {
-  const background = getBackground(settings.backgroundId)
+  const { kind, colors } = settings.background
 
-  if (background.kind === "solid") {
-    ctx.fillStyle = background.colors[0]
+  if (kind === "solid") {
+    ctx.fillStyle = colors[0]
     ctx.fillRect(0, 0, size, size)
   } else {
     const gradient = ctx.createLinearGradient(0, 0, size, size)
-    gradient.addColorStop(0, background.colors[0])
-    gradient.addColorStop(1, background.colors[1] ?? background.colors[0])
+    gradient.addColorStop(0, colors[0])
+    gradient.addColorStop(1, colors[1] ?? colors[0])
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, size, size)
   }

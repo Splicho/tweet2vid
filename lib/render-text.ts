@@ -4,7 +4,10 @@ import path from "node:path"
 import satori, { type Font as SatoriFont } from "satori"
 import { Resvg } from "@resvg/resvg-js"
 
-import { getBackground, resolveTextColor } from "./backgrounds"
+import {
+  type BackgroundSettings,
+  resolveTextColorForBackground,
+} from "./backgrounds"
 import { DEFAULT_TEXT_SETTINGS } from "./editor"
 
 export const CANVAS_SIZE = 1080
@@ -16,8 +19,8 @@ const LINE_HEIGHT = 1.32
 
 export interface RenderTextOptions {
   text: string
-  backgroundId: string
-  textColor: "auto" | "white" | "black"
+  background: BackgroundSettings
+  textColor: string
   fontFamily?: string
   fontWeight?: number
   fontSize?: number
@@ -194,8 +197,9 @@ function textBlock(
   }
 }
 
-function backgroundStyle(backgroundId: string): Record<string, unknown> {
-  const background = getBackground(backgroundId)
+function backgroundStyle(
+  background: BackgroundSettings
+): Record<string, unknown> {
   if (background.kind === "solid") {
     return { backgroundColor: background.colors[0] }
   }
@@ -232,7 +236,10 @@ export async function renderTextPng(
 ): Promise<RenderTextResult> {
   const fonts = await loadFonts()
   const fontOptions = resolveFontOptions(options)
-  const color = resolveTextColor(options.backgroundId, options.textColor)
+  const color = resolveTextColorForBackground(
+    options.background.colors,
+    options.textColor
+  )
   const maxTextHeight = CANVAS_SIZE * MAX_TEXT_RATIO
 
   let fontSize = fontOptions.fontSize
@@ -268,7 +275,7 @@ export async function renderTextPng(
         display: "flex",
         width: CANVAS_SIZE,
         height: CANVAS_SIZE,
-        ...backgroundStyle(options.backgroundId),
+        ...backgroundStyle(options.background),
       },
       children: {
         type: "div",
